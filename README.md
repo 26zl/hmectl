@@ -22,6 +22,14 @@ which Apple can change or block at any time, and this use may not be covered by 
 
 ## Install
 
+In one line (builds from source, so it still needs Xcode or the Command Line Tools):
+
+```sh
+d=$(mktemp -d) && git clone --depth 1 https://github.com/26zl/hmectl.git "$d" && make -C "$d" build && sudo make -C "$d" install
+```
+
+Or step by step, with the tests:
+
 ```sh
 git clone https://github.com/26zl/hmectl.git
 cd hmectl
@@ -35,7 +43,9 @@ Without sudo: `make install PREFIX="$HOME/.local"`, then add `~/.local/bin` to y
 `~/.local/share/zsh/site-functions` to `fpath` for completion). A binary in your home folder can be
 replaced by any program running as you.
 
-To uninstall, run `hmectl logout`, then `sudo make uninstall` (with the same `PREFIX` if you set one).
+To uninstall, run `hmectl logout`, then `sudo make uninstall` in the clone (with the same `PREFIX` if you
+set one). After the one-line install, use `sudo rm /usr/local/bin/hmectl
+/usr/local/share/zsh/site-functions/_hmectl` instead.
 
 ## Usage
 
