@@ -20,7 +20,7 @@ hmectl uses the same private web API as icloud.com. Read [Limits](#limits) befor
 ## Requirements
 
 - macOS 13 or later on a Mac with Touch ID or a login password (any Mac).
-- Swift 6: Xcode 16 or later, or the Command Line Tools (`xcode-select --install`).
+- Swift 6.2 or later: Xcode 26 or later, or its Command Line Tools (`xcode-select --install`).
 - An iCloud+ subscription and an Apple Account with two-factor authentication through a trusted device
   or a text message. Accounts that use security keys are not supported.
 
