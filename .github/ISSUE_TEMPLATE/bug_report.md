@@ -8,7 +8,7 @@ assignees: ''
 
 **What happened**
 A clear description of the problem. For a security problem, follow
-[SECURITY.md](../../SECURITY.md) instead of filing here.
+[SECURITY.md](https://github.com/26zl/hmectl/blob/main/SECURITY.md) instead of filing here.
 
 **To reproduce**
 The exact command you ran, for example `hmectl list --trace`.
@@ -19,7 +19,8 @@ What you expected to happen.
 **Output**
 Paste the relevant output. `--trace` shows only methods, hosts, paths and status
 codes. Never paste your password, verification codes, aliases you want to keep
-private, or anything from the `hmectl` Keychain item.
+private, the address they forward to (`forwardTo` in `--json` output), or anything
+from the `hmectl` Keychain item.
 
 **Environment**
 - hmectl version (`hmectl --version`):

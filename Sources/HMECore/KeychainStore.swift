@@ -16,6 +16,7 @@ public struct KeychainStore: Sendable {
     }
 
     public func load() throws -> SessionState? {
+        guard try summary() != nil else { return nil }
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -34,16 +35,18 @@ public struct KeychainStore: Sendable {
         return state
     }
 
-    /// Account name and modification date, read without touching the secret data.
+    /// Account name and modification date, read without touching the secret data. hmectl saves one
+    /// item, so a second one was added by another program and none of them is used.
     public func summary() throws -> Summary? {
         var query = baseQuery
         query[kSecReturnAttributes as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        query[kSecMatchLimit as String] = kSecMatchLimitAll
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
         try check(status)
-        guard let attributes = result as? [String: Any] else { return nil }
+        guard let items = result as? [[String: Any]], let attributes = items.first else { return nil }
+        guard items.count == 1 else { throw HMEError.duplicateSessions }
         return Summary(
             appleID: attributes[kSecAttrAccount as String] as? String ?? "",
             modified: attributes[kSecAttrModificationDate as String] as? Date

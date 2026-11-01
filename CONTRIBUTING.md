@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping. hmectl is a small tool that handles Apple Account credentials, so please open an
-issue before a large change. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+issue before a large change.
 
 ## Set up and check
 
@@ -11,8 +11,12 @@ make lint     # swift format lint --strict, and zsh -n on the completion
 make build    # release build
 ```
 
-`HMECTL_LIVE_TESTS=1 swift test --filter LiveTLSTests` additionally checks the TLS policy against
-Apple's hosts without credentials. Format with `make format`.
+`HMECTL_LIVE_TESTS=1 make test ARGS="--filter LiveTLSTests"` additionally checks the TLS policy
+against Apple's hosts without credentials. Format with `make format`.
+
+CI builds, installs and tests with Xcode 26.0.1 (Swift 6.2, the oldest supported toolchain) on
+macOS 15 and with Xcode 26.6 on macOS 26. Both are pinned in `.github/workflows/ci.yml`; move the
+newer one forward when GitHub's runner images change.
 
 ## Rules
 
@@ -37,6 +41,4 @@ closest look. Commit messages are imperative and carry no AI attribution trailer
 ## Versions and releases
 
 Versions follow [Semantic Versioning](https://semver.org/). The version lives only in
-`Sources/HMECore/Command.swift` (`Version.current`). User-visible changes get a line in
-[CHANGELOG.md](CHANGELOG.md); a release is a tag `vX.Y.Z` on `main` with the matching changelog
-section.
+`Sources/HMECore/Command.swift` (`Version.current`), and a release is a tag `vX.Y.Z` on `main`.

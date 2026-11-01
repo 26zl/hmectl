@@ -10,24 +10,43 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
-    runs-on: macos-26
+    name: test (Xcode ${{ matrix.xcode }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Swift 6.2, the oldest toolchain the README supports, and the newest Xcode on the runner images.
+          - runner: macos-15
+            xcode: "26.0.1"
+          - runner: macos-26
+            xcode: "26.6"
+            newest: true
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: swift --version
       - name: Lint
+        if: matrix.newest
         run: make lint
       - name: Build
-        run: swift build -c release
+        run: make build
+      - name: Install into a temporary prefix
+        run: |
+          make install PREFIX="$RUNNER_TEMP/prefix"
+          "$RUNNER_TEMP/prefix/bin/hmectl" --version
       - name: Test
-        run: swift test
+        run: make test
       - name: Test vectors match their generator
+        if: matrix.newest
         run: |
           python3 Scripts/generate-test-vectors.py "$RUNNER_TEMP/TestVectors.swift"
           cmp "$RUNNER_TEMP/TestVectors.swift" Tests/HMECoreTests/TestVectors.swift

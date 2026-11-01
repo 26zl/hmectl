@@ -16,5 +16,5 @@
 - [ ] No new third-party dependencies
 - [ ] No new hosts, or a `HostPolicy` change with the reason stated above
 - [ ] No passwords, codes, tokens, cookies or real account data in the diff, tests or logs
-- [ ] `--help`, README, `completions/_hmectl` and CHANGELOG updated for user-visible changes
+- [ ] `--help`, README and `completions/_hmectl` updated for user-visible changes
 - [ ] Commit messages are imperative, with no AI attribution trailers

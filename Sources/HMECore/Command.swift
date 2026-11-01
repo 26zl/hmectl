@@ -56,8 +56,8 @@ public enum CommandLineParser {
           -h, --help      Show this help.
           --version       Show the version.
 
-        new, list, deactivate and reactivate ask for Touch ID or your login password before they use
-        the saved session; login asks for your Apple Account password instead.
+        new, list, deactivate, reactivate and logout ask for Touch ID or your login password before
+        they use the saved session; login asks for your Apple Account password instead.
 
         EXIT STATUS
           0 success, 1 error, 2 usage error, 3 not signed in or session expired, 4 cancelled
@@ -92,7 +92,11 @@ public enum CommandLineParser {
                 values[name] = String(argument[argument.index(after: equals)...])
             } else if valueOptions.contains(argument) {
                 guard index < arguments.count else { throw usage("\(argument) needs a value.") }
-                values[argument] = arguments[index]
+                let value = arguments[index]
+                guard !value.hasPrefix("-") || value == "-" else {
+                    throw usage("\(argument) needs a value; use \(argument)=<text> for text that starts with '-'.")
+                }
+                values[argument] = value
                 index += 1
             } else if flagOptions.contains(argument) {
                 flags.insert(argument)

@@ -120,3 +120,120 @@ struct HideMyEmailTests {
         #expect(TrustedPhone.best(in: [:]) == nil)
     }
 }
+
+/// The requests behind new, deactivate and reactivate, against a scripted transport.
+struct HideMyEmailRequestTests {
+    private func client(_ routes: [String: [Result<HTTPResponse, HMEError>]]) throws -> (
+        HideMyEmailClient, FakeTransport
+    ) {
+        let transport = FakeTransport(routes)
+        transport.serviceHost = "p68-maildomainws.icloud.com"
+        let client = HideMyEmailClient(
+            http: transport, baseURL: try #require(URL(string: "https://p68-maildomainws.icloud.com")),
+            query: ["clientBuildNumber": "2534Project66", "clientId": "client-1", "dsid": "123456"]
+        )
+        return (client, transport)
+    }
+
+    private static func ok(_ result: [String: Any]) -> Result<HTTPResponse, HMEError> {
+        AccountClientTests.reply(200, ["success": true, "result": result])
+    }
+
+    @Test func generatesACandidateAddress() async throws {
+        let (client, transport) = try client(["POST /v1/hme/generate": [Self.ok(["hme": "quiet_fox_1@icloud.com"])]])
+        #expect(try await client.generate() == "quiet_fox_1@icloud.com")
+        let request = try #require(transport.requests.first)
+        #expect(request.body == nil)
+        let query = URLComponents(url: request.url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.contains(URLQueryItem(name: "dsid", value: "123456")))
+    }
+
+    @Test func refusesAnUnusableCandidate() async throws {
+        let (client, _) = try client(["POST /v1/hme/generate": [Self.ok(["hme": "no-at-sign"])]])
+        await #expect(throws: HMEError.unexpectedResponse("Apple sent no usable address")) {
+            _ = try await client.generate()
+        }
+    }
+
+    @Test func reservesTheAddressWithItsLabelAndNote() async throws {
+        let hme: [String: Any] = [
+            "anonymousId": "abc123", "hme": "quiet_fox_1@icloud.com", "label": "Shop", "note": "Warranty",
+            "isActive": true, "forwardToEmail": "me@example.com",
+        ]
+        let (client, transport) = try client(["POST /v1/hme/reserve": [Self.ok(["hme": hme])]])
+        let alias = try await client.reserve(address: "quiet_fox_1@icloud.com", label: "Shop", note: "Warranty")
+        #expect(
+            alias
+                == Alias(
+                    id: "abc123", address: "quiet_fox_1@icloud.com", label: "Shop", note: "Warranty", isActive: true,
+                    createdAt: nil, forwardTo: "me@example.com"
+                )
+        )
+        let request = try #require(transport.requests.first)
+        #expect(request.headers["Content-Type"] == "application/json")
+        let body = try #require(try JSONSerialization.jsonObject(with: request.body ?? Data()) as? [String: String])
+        #expect(body == ["hme": "quiet_fox_1@icloud.com", "label": "Shop", "note": "Warranty"])
+    }
+
+    @Test func refusesAReserveAnswerWithoutTheAlias() async throws {
+        let (client, _) = try client(["POST /v1/hme/reserve": [Self.ok([:])]])
+        await #expect(throws: HMEError.unexpectedResponse("Apple did not confirm the new alias")) {
+            _ = try await client.reserve(address: "quiet_fox_1@icloud.com", label: "Shop", note: "")
+        }
+    }
+
+    private static let reserved = Alias(
+        id: "abc123", address: "quiet_fox_1@icloud.com", label: "Shop", note: "", isActive: true, createdAt: nil,
+        forwardTo: nil
+    )
+
+    @Test func takesTheForwardingAddressFromTheReserveAnswerWhenPresent() async throws {
+        let (client, transport) = try client([:])
+        let alias = Alias(
+            id: "abc123", address: "quiet_fox_1@icloud.com", label: "Shop", note: "", isActive: true, createdAt: nil,
+            forwardTo: "me@example.com"
+        )
+        #expect(await client.forwardingAddress(of: alias) == "me@example.com")
+        #expect(transport.requests.isEmpty)
+    }
+
+    @Test func looksUpTheForwardingAddressInTheAliasList() async throws {
+        let entries: [[String: Any]] = [
+            ["anonymousId": "other", "hme": "slow_owl_2@icloud.com", "forwardToEmail": "else@example.com"],
+            ["anonymousId": "abc123", "hme": "quiet_fox_1@icloud.com", "forwardToEmail": "me@example.com"],
+        ]
+        let (client, _) = try client([
+            "GET /v2/hme/list": [Self.ok(["hmeEmails": entries, "selectedForwardTo": "else@example.com"])]
+        ])
+        #expect(await client.forwardingAddress(of: Self.reserved) == "me@example.com")
+    }
+
+    @Test func fallsBackToTheAccountsForwardingAddress() async throws {
+        let entries: [[String: Any]] = [["anonymousId": "abc123", "hme": "quiet_fox_1@icloud.com"]]
+        let (client, _) = try client([
+            "GET /v2/hme/list": [Self.ok(["hmeEmails": entries, "selectedForwardTo": "me@example.com"])]
+        ])
+        #expect(await client.forwardingAddress(of: Self.reserved) == "me@example.com")
+    }
+
+    @Test func hasNoForwardingAddressWhenTheListFails() async throws {
+        let (client, _) = try client(["GET /v2/hme/list": [AccountClientTests.reply(500)]])
+        #expect(await client.forwardingAddress(of: Self.reserved) == nil)
+    }
+
+    @Test(arguments: [false, true])
+    func changesWhetherAnAliasIsActive(active: Bool) async throws {
+        let route = active ? "POST /v1/hme/reactivate" : "POST /v1/hme/deactivate"
+        let (client, transport) = try client([route: [Self.ok([:])]])
+        try await client.setActive(active, id: "abc123")
+        let request = try #require(transport.requests(to: route).first)
+        let body = try #require(try JSONSerialization.jsonObject(with: request.body ?? Data()) as? [String: String])
+        #expect(body == ["anonymousId": "abc123"])
+    }
+
+    @Test func reportsAChangeAppleRefused() async throws {
+        let refusal = AccountClientTests.reply(200, ["success": false, "error": ["errorMessage": "Not allowed."]])
+        let (client, _) = try client(["POST /v1/hme/deactivate": [refusal]])
+        await #expect(throws: HMEError.apple("Not allowed.")) { try await client.setActive(false, id: "abc123") }
+    }
+}
