@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping. hmectl is a small tool that handles Apple Account credentials, so please open an
-issue before a large change.
+issue before a large change. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Set up and check
 
@@ -27,6 +27,12 @@ Apple's hosts without credentials. Format with `make format`.
   session values.
 - Every bug fix comes with a test that fails without the fix.
 - Keep comments to non-obvious intent.
+
+## Pull requests
+
+Fill in the pull request template. A change is merged when CI is green and the code owner (see
+`.github/CODEOWNERS`) has reviewed it; changes to the sign-in, network, Keychain or SRP code get the
+closest look. Commit messages are imperative and carry no AI attribution trailers.
 
 ## Versions and releases
 

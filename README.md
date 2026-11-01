@@ -17,6 +17,9 @@ has no third-party dependencies, and talks only to Apple.
 hmectl is not made by or affiliated with Apple. Apple offers no public API for Hide My Email, so
 hmectl uses the same private web API as icloud.com. Read [Limits](#limits) before you rely on it.
 
+**Status:** early (0.1.x). It works against Apple's web API as it is today, and that API can change
+without notice.
+
 ## Requirements
 
 - macOS 13 or later on a Mac with Touch ID or a login password (any Mac).
@@ -111,7 +114,7 @@ deliberately. A deactivated alias can be reactivated; a deleted one is gone.
   Browsers* at icloud.com.
 
 Check it yourself: run any command with `--trace`, watch the connections with a firewall such as
-LuLu, and read the code. The SRP code is tested against RFC 5054 appendix B and against vectors from
+[LuLu](https://objective-see.org/products/lulu.html), and read the code. The SRP code is tested against RFC 5054 appendix B and against vectors from
 an independent Python implementation of the client pyicloud uses
 ([`Scripts/generate-test-vectors.py`](Scripts/generate-test-vectors.py)).
 
@@ -136,11 +139,17 @@ an independent Python implementation of the client pyicloud uses
 ```sh
 make test                                              # unit tests, no network
 HMECTL_LIVE_TESTS=1 swift test --filter LiveTLSTests   # TLS policy against Apple, no credentials
-make lint                                              # swift format lint --strict
+make lint                                              # swift format lint --strict, zsh -n on the completion
 python3 Scripts/generate-test-vectors.py               # regenerate the test vectors (standard library only)
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Getting help
+
+Open an issue for a bug or an idea; the templates ask for what helps. Report security problems
+privately as described in [SECURITY.md](SECURITY.md), never in a public issue, and never share your
+password, verification codes or anything from the `hmectl` Keychain item.
 
 ## Acknowledgements
 
@@ -151,3 +160,7 @@ and [pysrp](https://github.com/cocagne/pysrp) (both MIT), and
 ## License
 
 [MIT](LICENSE)
+
+Apple, iCloud, iCloud+, Hide My Email, Touch ID and Keychain are trademarks of Apple Inc., registered in
+the U.S. and other countries. hmectl is an independent project and is not affiliated with, endorsed by or
+sponsored by Apple.

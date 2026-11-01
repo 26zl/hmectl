@@ -1,0 +1,9 @@
+* @26zl
+
+/.github/ @26zl
+/Sources/HMECore/AccountClient.swift @26zl
+/Sources/HMECore/BigUInt.swift @26zl
+/Sources/HMECore/HostPolicy.swift @26zl
+/Sources/HMECore/HTTPClient.swift @26zl
+/Sources/HMECore/KeychainStore.swift @26zl
+/Sources/HMECore/SRP.swift @26zl
