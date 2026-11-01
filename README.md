@@ -72,7 +72,8 @@ hmectl does not delete aliases; do that in Settings (Apple Account > iCloud > Hi
 
 - Your password is used for SRP-6a sign-in and is never sent or saved.
 - The session is one item named `hmectl` in your login Keychain. Other programs that read it get a
-  Keychain prompt; deny prompts you did not expect.
+  Keychain prompt; deny prompts you did not expect. A new build of hmectl, for example after an
+  upgrade, is also a different program to the Keychain, so it asks once; choose *Always Allow*.
 - `new`, `list`, `deactivate`, `reactivate` and `logout` ask for Touch ID or your login password first.
 - Requests go only to `idmsa.apple.com`, `setup.icloud.com` and your account's `*.icloud.com` Hide My
   Email host, over HTTPS without following redirects, and the certificate must chain to a root built
@@ -85,7 +86,8 @@ Report vulnerabilities as described in [SECURITY.md](SECURITY.md), not in a publ
 ## Limits
 
 - One alias per command, and Apple limits how many you can create.
-- With Advanced Data Protection, *Access iCloud Data on the Web* must be on.
+- With Advanced Data Protection, *Access iCloud Data on the Web* must stay on while you use hmectl.
+  With it off, iCloud refuses the saved session until you turn it back on.
 - Apple's newer sign-in prompt on your devices is not supported. If no code appears on a device, press
   Return at the code prompt to get one by text message.
 - Security keys and accounts on icloud.com.cn are not supported.
