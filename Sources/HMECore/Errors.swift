@@ -65,7 +65,7 @@ public enum HMEError: Error, Equatable, CustomStringConvertible {
         case .termsUpdateNeeded:
             "Apple has new iCloud terms. Accept them by signing in once at https://www.icloud.com, then try again."
         case .webAccessDisabled:
-            "iCloud refused this session for Hide My Email (\"Invalid global session\"). Run 'hmectl login' again; if that does not help and Advanced Data Protection is on, turn on Access iCloud Data on the Web first."
+            "iCloud refused this session for Hide My Email (\"Invalid global session\"). If Advanced Data Protection is on, turn on Access iCloud Data on the Web; otherwise run 'hmectl login' again."
         case .hideMyEmailUnavailable:
             "Hide My Email is not available for this account. It needs an iCloud+ subscription."
         case .aliasNotFound(let target):
