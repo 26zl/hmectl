@@ -9,6 +9,14 @@ public protocol SignInPrompter: Sendable {
     func progress(_ message: String)
 }
 
+public enum VerificationCode {
+    /// The code without the spaces or dashes people type, if it is exactly `length` ASCII digits.
+    public static func normalized(_ input: String, length: Int) -> String? {
+        let digits = input.filter { $0 != " " && $0 != "-" }
+        return digits.count == length && digits.allSatisfy(\.isASCII) && digits.allSatisfy(\.isNumber) ? digits : nil
+    }
+}
+
 /// The iCloud web client's public identifiers. Apple offers no other interface to Hide My Email,
 /// so hmectl presents itself the way icloud.com does.
 enum AppleWeb {

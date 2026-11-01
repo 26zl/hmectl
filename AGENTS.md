@@ -10,8 +10,8 @@ Email aliases. It handles real credentials, so work conservatively.
 - `make build`: release build, signed ad hoc with the hardened runtime.
 - `python3 Scripts/generate-test-vectors.py`: regenerates `Tests/HMECoreTests/TestVectors.swift` after
   a change to the SRP or BigUInt code (standard library only).
-- `HMECTL_LIVE_TESTS=1 swift test --filter LiveTLSTests`: contacts Apple without credentials; run it
-  only when asked.
+- `HMECTL_LIVE_TESTS=1 make test ARGS="--filter LiveTLSTests"`: contacts Apple without credentials;
+  run it only when asked.
 
 ## Boundaries
 
@@ -23,5 +23,4 @@ Email aliases. It handles real credentials, so work conservatively.
   and path only.
 - Use synthetic accounts and addresses in tests and documentation.
 - A new command or option updates `--help`, the README and `completions/_hmectl`.
-- Keep comments to non-obvious intent. The version lives only in `Version.current`, and user-visible
-  changes get a line in `CHANGELOG.md`.
+- Keep comments to non-obvious intent. The version lives only in `Version.current`.

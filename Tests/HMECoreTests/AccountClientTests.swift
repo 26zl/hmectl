@@ -277,4 +277,34 @@ struct AccountClientTests {
             try await AccountClient(http: transport).resume(Self.saved)
         }
     }
+
+    @Test func signsOutAtAppleAndUntrustsThisClient() async throws {
+        let transport = FakeTransport(["POST /setup/ws/1/logout": [Self.reply(200, ["success": true])]])
+        #expect(await AccountClient(http: transport).signOut(Self.saved))
+        let request = try #require(transport.requests(to: "POST /setup/ws/1/logout").first)
+        #expect(request.headers["Content-Type"] == "text/plain;charset=UTF-8")
+        let body = try #require(try JSONSerialization.jsonObject(with: request.body ?? Data()) as? [String: Bool])
+        #expect(body == ["trustBrowser": false, "allBrowsers": false])
+        let query = URLComponents(url: request.url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.contains(URLQueryItem(name: "clientId", value: "client-1")))
+        #expect(query.contains(URLQueryItem(name: "dsid", value: "123456")))
+    }
+
+    @Test(arguments: [
+        AccountClientTests.reply(421), AccountClientTests.reply(200, ["success": false]),
+        .failure(HMEError.network("offline")),
+    ])
+    func reportsASignOutAppleDidNotConfirm(answer: Result<HTTPResponse, HMEError>) async {
+        let transport = FakeTransport(["POST /setup/ws/1/logout": [answer]])
+        #expect(await AccountClient(http: transport).signOut(Self.saved) == false)
+    }
+
+    @Test func normalizesTypedVerificationCodes() {
+        #expect(VerificationCode.normalized("123456", length: 6) == "123456")
+        #expect(VerificationCode.normalized("123 456", length: 6) == "123456")
+        #expect(VerificationCode.normalized("12-34-56", length: 6) == "123456")
+        #expect(VerificationCode.normalized("12345", length: 6) == nil)
+        #expect(VerificationCode.normalized("12345a", length: 6) == nil)
+        #expect(VerificationCode.normalized("١٢٣٤٥٦", length: 6) == nil)
+    }
 }

@@ -21,6 +21,14 @@ struct CommandTests {
             try parse("new", "--note", "x", "--", "--label-with-dashes").command
                 == .new(label: "--label-with-dashes", note: "x", copy: true, json: false, dryRun: false)
         )
+        #expect(
+            try parse("new", "a", "--note=--dry-run").command
+                == .new(label: "a", note: "--dry-run", copy: true, json: false, dryRun: false)
+        )
+        #expect(
+            try parse("new", "a", "--note", "-").command
+                == .new(label: "a", note: "-", copy: true, json: false, dryRun: false)
+        )
     }
 
     @Test func parsesTheOtherCommands() throws {
@@ -53,6 +61,8 @@ struct CommandTests {
         ["login", "--note", "x"],
         ["logout", "--json"],
         ["new", "a", "--note"],
+        ["new", "a", "--note", "--dry-run"],
+        ["login", "--apple-id", "--trace"],
         ["new", "a", "--unknown"],
         ["status", "--trace=1"],
     ])
@@ -96,5 +106,7 @@ struct CommandTests {
         #expect(HMEError.sessionExpired.exitCode == 3)
         #expect(HMEError.cancelled.exitCode == 4)
         #expect(HMEError.network("x").exitCode == 1)
+        #expect(HMEError.duplicateSessions.exitCode == 1)
+        #expect(HMEError.sessionLock("x").exitCode == 1)
     }
 }

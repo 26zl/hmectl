@@ -1,12 +1,11 @@
 import Foundation
-import HMECore
 
-enum Output {
-    static func clean(_ text: String) -> String {
+public enum Output {
+    public static func clean(_ text: String) -> String {
         TerminalText.clean(text)
     }
 
-    static func table(_ aliases: [Alias]) -> String {
+    public static func table(_ aliases: [Alias]) -> String {
         let rows = aliases.map { alias in
             [
                 alias.isActive ? "active" : "inactive", clean(alias.address), clean(alias.label),
@@ -24,14 +23,14 @@ enum Output {
         }.joined(separator: "\n")
     }
 
-    static func json(_ value: some Encodable) throws -> String {
+    public static func json(_ value: some Encodable) throws -> String {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return TerminalText.escapingJSON(String(decoding: try encoder.encode(value), as: UTF8.self))
     }
 
-    static func json(status summary: KeychainStore.Summary?) throws -> String {
+    public static func json(status summary: KeychainStore.Summary?) throws -> String {
         struct Status: Encodable {
             let signedIn: Bool
             let appleID: String?
@@ -44,7 +43,7 @@ enum Output {
         date.formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())
     }
 
-    static func dateTime(_ date: Date) -> String {
+    public static func dateTime(_ date: Date) -> String {
         date.formatted(date: .abbreviated, time: .shortened)
     }
 }

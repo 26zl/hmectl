@@ -24,6 +24,8 @@ public enum HMEError: Error, Equatable, CustomStringConvertible {
     case keychain(String)
     case keychainAccessDenied
     case unreadableSession
+    case duplicateSessions
+    case sessionLock(String)
     case userPresenceUnavailable(String)
 
     /// 0 success, 1 failure, 2 usage error, 3 sign-in required, 4 cancelled.
@@ -84,6 +86,10 @@ public enum HMEError: Error, Equatable, CustomStringConvertible {
             "The Keychain did not allow access to the saved session (access denied or wrong Keychain password)."
         case .unreadableSession:
             "The saved session cannot be read. Run 'hmectl logout' to delete it, then 'hmectl login'."
+        case .duplicateSessions:
+            "Your login Keychain holds more than one hmectl session, and hmectl saves only one, so another program may have added it. Run 'hmectl logout' to delete them all, then 'hmectl login'."
+        case .sessionLock(let message):
+            "Could not lock the saved session (\(message)), so hmectl stops rather than risk two commands overwriting it."
         case .userPresenceUnavailable(let message):
             "Cannot confirm that it is you (Touch ID or your login password): \(message)"
         }

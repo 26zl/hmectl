@@ -70,7 +70,7 @@ struct Runner {
             }
             return 0
         }
-        let service = try await openSession()
+        let service = try await openSession { "create a Hide My Email alias for \($0)" }
         defer { saveSession() }
         let address = try await service.generate()
         let alias = try await service.reserve(address: address, label: label, note: note)
@@ -79,12 +79,16 @@ struct Runner {
         Terminal.error(
             "Created \(alias.address) for \"\(alias.label)\"" + (copied ? " and copied it to the clipboard." : ".")
         )
+        // Apple's answer, not the Keychain label, shows whose account the alias belongs to.
+        if let forwardTo = await service.forwardingAddress(of: alias) {
+            Terminal.error("Mail sent to it is forwarded to \(forwardTo).")
+        }
         if copy && !copied { Terminal.error("Could not copy the alias to the clipboard.") }
         return 0
     }
 
     private func list(filter: ListFilter, json: Bool) async throws -> Int32 {
-        let service = try await openSession()
+        let service = try await openSession { "list the Hide My Email aliases of \($0)" }
         defer { saveSession() }
         let aliases = try await service.list()
             .filter { filter == .all || $0.isActive == (filter == .active) }
@@ -100,7 +104,10 @@ struct Runner {
     }
 
     private func setActive(_ active: Bool, target: String, dryRun: Bool) async throws -> Int32 {
-        let service = try await openSession()
+        let verb = active ? "reactivate" : "deactivate"
+        let service = try await openSession { account in
+            "\(dryRun ? "look up" : verb) the Hide My Email alias \(Output.clean(target)) of \(account)"
+        }
         defer { if !dryRun { saveSession() } }
         let aliases = try await service.list()
         guard let alias = AliasInput.find(target, in: aliases) else { throw HMEError.aliasNotFound(target) }
@@ -109,7 +116,6 @@ struct Runner {
             return 0
         }
         if dryRun {
-            let verb = active ? "reactivate" : "deactivate"
             print("Would \(verb) \(Output.clean(alias.address)) (\"\(Output.clean(alias.label))\").")
             return 0
         }
@@ -120,7 +126,7 @@ struct Runner {
 
     private func login(appleID rawAppleID: String?) async throws -> Int32 {
         guard Terminal.isInteractive else { throw HMEError.needsTerminal }
-        SessionLock.acquire()
+        try SessionLock.acquire()
         let saved = try store.summary()
         let appleID = try AliasInput.appleID(rawAppleID ?? Terminal.line("Apple Account (email or phone number): "))
         if let saved, saved.appleID.caseInsensitiveCompare(appleID) != .orderedSame {
@@ -137,6 +143,9 @@ struct Runner {
                 previous = try store.load()
             } catch HMEError.unreadableSession {
                 previous = nil
+            } catch HMEError.keychainAccessDenied {
+                Terminal.error("Continuing without the earlier session, so Apple may ask for a code again.")
+                previous = nil
             }
         }
         Terminal.error("Signing in to Apple...")
@@ -149,25 +158,43 @@ struct Runner {
         return 0
     }
 
+    /// Exits with 1 whenever the session may still be valid at Apple, so `logout && uninstall` stops.
     private func logout() async throws -> Int32 {
-        SessionLock.acquire()
-        guard try store.summary() != nil else {
+        try SessionLock.acquire()
+        let summary: KeychainStore.Summary?
+        do {
+            summary = try store.summary()
+        } catch HMEError.duplicateSessions {
+            try await UserPresence.confirm(reason: "delete every saved hmectl session from your login Keychain")
+            try store.delete()
+            Terminal.error(
+                "Deleted every hmectl session from your login Keychain without contacting Apple, since one of them was not saved by hmectl. Use Sign Out of All Browsers at icloud.com to end your own session."
+            )
+            return 1
+        }
+        guard let summary else {
             Terminal.error("Not signed in.")
             return 0
         }
+        try await UserPresence.confirm(
+            reason: "sign \(Output.clean(summary.appleID)) out of iCloud and delete the saved session")
         var confirmed = false
         do {
             if let state = try store.load() { confirmed = await account.signOut(state) }
         } catch HMEError.unreadableSession {
             Terminal.error("The saved session cannot be read, so it cannot be ended at Apple.")
+        } catch HMEError.keychainAccessDenied {
+            Terminal.error("The Keychain did not let hmectl read the saved session, so it cannot be ended at Apple.")
         }
         try store.delete()
+        if confirmed {
+            Terminal.error("Signed out at Apple and deleted the saved session.")
+            return 0
+        }
         Terminal.error(
-            confirmed
-                ? "Signed out at Apple and deleted the saved session."
-                : "Deleted the saved session. Apple did not confirm the sign-out; the session ends when it expires, or sooner with Sign Out of All Browsers at icloud.com."
+            "Deleted the saved session. Apple did not confirm the sign-out; the session ends when it expires, or sooner with Sign Out of All Browsers at icloud.com."
         )
-        return 0
+        return 1
     }
 
     private func status(json: Bool) throws -> Int32 {
@@ -183,11 +210,12 @@ struct Runner {
         return summary == nil ? 3 : 0
     }
 
-    /// Touch ID or the login password, then the saved session, checked with iCloud.
-    private func openSession() async throws -> HideMyEmailClient {
-        SessionLock.acquire()
-        guard try store.summary() != nil else { throw HMEError.notSignedIn }
-        try await UserPresence.confirm(reason: "use your saved iCloud session for Hide My Email")
+    /// Touch ID or the login password for `purpose`, which gets the account name, then the saved
+    /// session, checked with iCloud.
+    private func openSession(for purpose: (String) -> String) async throws -> HideMyEmailClient {
+        try SessionLock.acquire()
+        guard let summary = try store.summary() else { throw HMEError.notSignedIn }
+        try await UserPresence.confirm(reason: purpose(Output.clean(summary.appleID)))
         guard let state = try store.load() else { throw HMEError.notSignedIn }
         try await account.resume(state)
         return try account.hideMyEmail()
@@ -205,16 +233,17 @@ struct Runner {
 
 struct TerminalPrompter: SignInPrompter {
     func deviceCode(length: Int, textMessageAvailable: Bool) async throws -> String? {
-        Terminal.error(
-            "If a sign-in request appears on one of your Apple devices, choose Allow and enter the code it shows.")
-        if textMessageAvailable { Terminal.error("Press Return without a code to get one by text message instead.") }
+        Terminal.error("If one of your Apple devices shows a code, enter it here.")
+        if textMessageAvailable {
+            Terminal.error("If no code appears on your devices, press Return to get one by text message.")
+        }
         while true {
             let input = try Terminal.line("Verification code: ")
             if input.isEmpty {
                 if textMessageAvailable { return nil }
                 continue
             }
-            if let code = Self.normalized(input, length: length) { return code }
+            if let code = VerificationCode.normalized(input, length: length) { return code }
             Terminal.error("Enter the \(length)-digit code.")
         }
     }
@@ -222,17 +251,14 @@ struct TerminalPrompter: SignInPrompter {
     func textMessageCode(length: Int, phoneHint: String) async throws -> String {
         Terminal.error("Apple is sending a code by text message to \(phoneHint).")
         while true {
-            if let code = Self.normalized(try Terminal.line("Verification code: "), length: length) { return code }
+            if let code = VerificationCode.normalized(try Terminal.line("Verification code: "), length: length) {
+                return code
+            }
             Terminal.error("Enter the \(length)-digit code.")
         }
     }
 
     func progress(_ message: String) {
         Terminal.error(message)
-    }
-
-    static func normalized(_ input: String, length: Int) -> String? {
-        let digits = input.filter { $0 != " " && $0 != "-" }
-        return digits.count == length && digits.allSatisfy(\.isASCII) && digits.allSatisfy(\.isNumber) ? digits : nil
     }
 }

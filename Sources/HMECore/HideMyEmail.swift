@@ -73,6 +73,15 @@ public struct HideMyEmailClient: Sendable {
         return entries.compactMap(Alias.init(json:))
     }
 
+    /// Where mail sent to `alias` goes. Apple's reserve answer leaves it out, so this falls back
+    /// to the alias list, which has it per alias and for the account.
+    public func forwardingAddress(of alias: Alias) async -> String? {
+        if let forwardTo = alias.forwardTo { return forwardTo }
+        guard let result = try? await call("GET", "/v2/hme/list") else { return nil }
+        let entries = (result["hmeEmails"] as? [[String: Any]])?.compactMap(Alias.init(json:)) ?? []
+        return entries.first { $0.id == alias.id }?.forwardTo ?? result["selectedForwardTo"] as? String
+    }
+
     public func setActive(_ active: Bool, id: String) async throws {
         _ = try await call("POST", active ? "/v1/hme/reactivate" : "/v1/hme/deactivate", body: ["anonymousId": id])
     }
