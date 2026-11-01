@@ -1,0 +1,68 @@
+#compdef hmectl
+
+_hmectl() {
+  local -a commands
+  commands=(
+    'new:create an alias, label it and copy it to the clipboard'
+    'list:list your aliases, newest first'
+    'deactivate:stop forwarding mail sent to an alias'
+    'reactivate:forward mail sent to an alias again'
+    'login:sign in with your password and a verification code'
+    'logout:sign out at Apple and delete the saved session'
+    'status:show which account is signed in'
+    'help:show the help'
+  )
+
+  local curcontext=$curcontext state line
+  _arguments -C \
+    '(- *)'{-h,--help}'[show the help]' \
+    '(- *)--version[show the version]' \
+    '--trace[print each request (method, host and path) to stderr]' \
+    '1: :->command' \
+    '*:: :->arguments'
+
+  case $state in
+    command)
+      _describe -t commands 'hmectl command' commands
+      ;;
+    arguments)
+      case $words[1] in
+        new)
+          _arguments \
+            '--note[note stored with the new alias]:note:' \
+            '--no-copy[do not copy the new alias to the clipboard]' \
+            '--json[print machine-readable JSON]' \
+            '--dry-run[show what would change and change nothing]' \
+            '--trace[print each request to stderr]' \
+            '1:label:'
+          ;;
+        list)
+          _arguments \
+            '(--inactive)--active[list only active aliases]' \
+            '(--active)--inactive[list only inactive aliases]' \
+            '--json[print machine-readable JSON]' \
+            '--trace[print each request to stderr]'
+          ;;
+        deactivate|reactivate)
+          _arguments \
+            '--dry-run[show what would change and change nothing]' \
+            '--trace[print each request to stderr]' \
+            '1:alias or id:'
+          ;;
+        login)
+          _arguments \
+            '--apple-id[Apple Account to sign in with]:apple account:' \
+            '--trace[print each request to stderr]'
+          ;;
+        logout)
+          _arguments '--trace[print each request to stderr]'
+          ;;
+        status)
+          _arguments '--json[print machine-readable JSON]'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_hmectl "$@"
